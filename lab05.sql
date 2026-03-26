@@ -218,14 +218,13 @@ FROM categories c
 WHERE (SELECT COALESCE(SUM(t.amount),0) FROM transactions t WHERE t.category_id = c.id) > 100;
 
 -- 4) Stored procedure + trigger
--- [Завд 19] Stored procedure для розрахунку балансу
-CREATE OR REPLACE PROCEDURE calculate_balance_proc(account_id INT, OUT balance DECIMAL)
+CREATE OR REPLACE PROCEDURE calculate_balance_proc(p_account_id INT, OUT balance DECIMAL)
 LANGUAGE plpgsql AS $$
 BEGIN
     SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount ELSE -amount END),0)
     INTO balance
-    FROM transactions
-    WHERE account_id = calculate_balance_proc.account_id;
+    FROM transactions t
+    WHERE t.account_id = p_account_id;
 END;
 $$;
 
