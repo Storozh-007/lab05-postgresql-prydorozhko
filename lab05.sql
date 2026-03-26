@@ -5,6 +5,7 @@
 -- CREATE DATABASE financial_database_prydorozhko;
 
 -- 1) Скидання до базового стану (обов’язково перед експериментами)
+-- [Завд 1] Скидання/створення таблиць та початкове наповнення
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -103,50 +104,50 @@ INSERT INTO transactions (account_id, amount, type, description, transaction_dat
 
 -- 2) Запити з завдання (виконуй окремо)
 
--- Простi вибірки транзакцій за рахунком
+-- [Завд 2] Простi вибірки транзакцій за рахунком
 SELECT * FROM transactions WHERE account_id = 1;
 SELECT * FROM transactions WHERE account_id = 9 ORDER BY transaction_date DESC;
 SELECT * FROM transactions WHERE account_id = 20 AND type = 'credit';
 
--- Сортування
+-- [Завд 3] Сортування за датою та сумою
 SELECT * FROM transactions ORDER BY transaction_date DESC;
 SELECT * FROM transactions ORDER BY amount DESC, transaction_date;
 
--- INNER JOIN: користувачі, рахунки, сума транзакцій
+-- [Завд 4] INNER JOIN: користувачі, рахунки, сума транзакцій
 SELECT u.name, a.account_number, SUM(t.amount) AS total_amount
 FROM users u
 JOIN accounts a ON u.id = a.user_id
 JOIN transactions t ON a.id = t.account_id
 GROUP BY u.name, a.account_number;
 
--- LEFT JOIN: рахунки без транзакцій
+-- [Завд 5] LEFT JOIN: рахунки без транзакцій
 SELECT u.name, a.account_number
 FROM users u
 LEFT JOIN accounts a ON u.id = a.user_id
 LEFT JOIN transactions t ON a.id = t.account_id
 WHERE t.id IS NULL;
 
--- CROSS JOIN (12 комбінацій)
+-- [Завд 6] CROSS JOIN (12 комбінацій)
 SELECT u.name, t.description, t.amount
 FROM users u
 CROSS JOIN transactions t
 LIMIT 12;
 
--- FULL OUTER JOIN accounts + transactions
+-- [Завд 7] FULL OUTER JOIN accounts + transactions
 SELECT a.account_number, t.id AS transaction_id, t.amount
 FROM accounts a
 FULL OUTER JOIN transactions t ON a.id = t.account_id;
 
--- Агрегати з групуванням
+-- [Завд 8] Агрегати з групуванням
 SELECT account_type, SUM(balance) AS sum_balance FROM accounts GROUP BY account_type;
 SELECT account_type, AVG(balance) AS avg_balance FROM accounts GROUP BY account_type;
 SELECT type, COUNT(*) AS txn_count, SUM(amount) AS sum_amount FROM transactions GROUP BY type;
 
--- UPDATE + перевірка
+-- [Завд 9] UPDATE балансу за типом + перевірка
 UPDATE accounts SET balance = balance + 1000 WHERE account_type = 'savings';
 SELECT account_number, balance FROM accounts WHERE account_type = 'savings';
 
--- UPDATE з JOIN (активні користувачі) + перевірка
+-- [Завд 10] UPDATE з JOIN (активні користувачі) + перевірка
 UPDATE accounts a SET balance = a.balance + 50
 FROM users u
 WHERE a.user_id = u.id AND u.is_active = TRUE;
@@ -154,23 +155,23 @@ SELECT a.account_number, a.balance
 FROM accounts a JOIN users u ON a.user_id = u.id
 WHERE u.is_active = TRUE;
 
--- DELETE старих транзакцій (60 днів) + перевірка
+-- [Завд 11] DELETE старих транзакцій (60 днів) + перевірка
 DELETE FROM transactions WHERE transaction_date < CURRENT_DATE - INTERVAL '60 days';
 SELECT * FROM transactions WHERE transaction_date < CURRENT_DATE - INTERVAL '60 days';
 
--- DELETE транзакцій для рахунків з від’ємним балансом + перевірка
+-- [Завд 12] DELETE транзакцій для рахунків з від’ємним балансом + перевірка
 DELETE FROM transactions USING accounts
 WHERE transactions.account_id = accounts.id AND accounts.balance < 0;
 SELECT a.account_number, a.balance FROM accounts a WHERE a.balance < 0;
 
--- Рахунок з максимальною сумою транзакцій (без balance)
+-- [Завд 13] Рахунок з максимальною сумою транзакцій (без balance)
 SELECT a.account_number, SUM(t.amount) AS total_amount
 FROM accounts a JOIN transactions t ON a.id = t.account_id
 GROUP BY a.account_number
 ORDER BY total_amount DESC
 LIMIT 1;
 
--- Користувачі з сумою транзакцій > 200
+-- [Завд 14] Користувачі з сумою транзакцій > 200
 SELECT u.name, SUM(t.amount) AS total_amount
 FROM users u
 JOIN accounts a ON u.id = a.user_id
@@ -179,6 +180,7 @@ GROUP BY u.name
 HAVING SUM(t.amount) > 200;
 
 -- 3) Додаткова таблиця categories + вибірки
+-- [Завд 15] Створення таблиці categories та зв’язку
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
@@ -189,6 +191,7 @@ INSERT INTO categories (name) VALUES
 ('Покупки'),('Зарплата'),('Оплата рахунків'),('Транспорт'),('Розваги'),
 ('Їжа'),('Іпотека'),('Бонус'),('Інвестиція'),('Повернення');
 
+-- [Завд 16] Проставлення категорій транзакціям
 UPDATE transactions SET category_id = CASE
     WHEN description ILIKE '%зарплат%' THEN (SELECT id FROM categories WHERE name='Зарплата')
     WHEN description ILIKE '%іпотек%' THEN (SELECT id FROM categories WHERE name='Іпотека')
@@ -202,19 +205,20 @@ UPDATE transactions SET category_id = CASE
     ELSE (SELECT id FROM categories WHERE name='Розваги')
 END;
 
--- Вибірка транзакцій з категоріями
+-- [Завд 17] Вибірка транзакцій з категоріями
 SELECT t.id, a.account_number, t.amount, t.type, c.name AS category, t.description, t.transaction_date
 FROM transactions t
 JOIN accounts a ON t.account_id = a.id
 LEFT JOIN categories c ON t.category_id = c.id
 ORDER BY t.id;
 
--- Корельований підзапит: категорії з сумою > 100
+-- [Завд 18] Корельований підзапит: категорії з сумою > 100
 SELECT c.id, c.name
 FROM categories c
 WHERE (SELECT COALESCE(SUM(t.amount),0) FROM transactions t WHERE t.category_id = c.id) > 100;
 
 -- 4) Stored procedure + trigger
+-- [Завд 19] Stored procedure для розрахунку балансу
 CREATE OR REPLACE PROCEDURE calculate_balance_proc(account_id INT, OUT balance DECIMAL)
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -253,7 +257,7 @@ CREATE TRIGGER balance_trigger
 AFTER INSERT OR UPDATE OR DELETE ON transactions
 FOR EACH ROW EXECUTE FUNCTION update_balance();
 
--- Перевірка тригера
+-- [Завд 20] Перевірка тригера
 SELECT balance FROM accounts WHERE id = 1;
 INSERT INTO transactions (account_id, amount, type, description) VALUES (1, 200.00, 'credit', 'Новий дохід');
 SELECT balance FROM accounts WHERE id = 1;
